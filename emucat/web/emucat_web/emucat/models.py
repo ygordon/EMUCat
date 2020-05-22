@@ -1,8 +1,68 @@
 from django.db import models
 
 
+class AllWise(models.Model):
+    designation = models.TextField(primary_key=True)
+    ra_dec = models.TextField()
+
+    def __str__(self):
+        return self.designation
+
+    class Meta:
+        managed = False
+        db_table = 'allwise'
+        verbose_name_plural = 'Allwise Sources'
+        ordering = ("designation",)
+
+
+class SourceExtractionRegion(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    name = models.TextField()
+    extent = models.TextField()
+    centre = models.TextField()
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        managed = False
+        db_table = 'source_extraction_regions'
+        verbose_name_plural = 'Source Extraction Regions'
+        ordering = ("name",)
+
+
+class SchedulingBlocks(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    sb_num = models.IntegerField()
+
+    def __str__(self):
+        return str(self.sb_num)
+
+    class Meta:
+        managed = False
+        db_table = 'scheduling_blocks'
+        verbose_name_plural = 'Scheduling Blocks'
+        ordering = ("sb_num",)
+
+
+class MosaicPrerequisites(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    sb = models.ForeignKey(SchedulingBlocks, on_delete=models.DO_NOTHING)
+    ser = models.ForeignKey(SourceExtractionRegion, on_delete=models.DO_NOTHING)
+
+    def __str__(self):
+        return str(self.id)
+
+    class Meta:
+        managed = False
+        db_table = 'mosaic_prerequisites'
+        verbose_name_plural = 'Mosaic Prerequisites'
+        ordering = ("id",)
+
+
 class Mosaics(models.Model):
     id = models.BigAutoField(primary_key=True)
+    ser = models.ForeignKey(SourceExtractionRegion, on_delete=models.DO_NOTHING)
     table_version = models.TextField(blank=True, null=True)
     image_file = models.TextField(blank=True, null=True)
     flag_subsection = models.BooleanField()
@@ -37,10 +97,10 @@ class Mosaics(models.Model):
         managed = False
         db_table = 'mosaics'
         verbose_name_plural = 'Mosaics'
-        ordering = ("image_file", "subsection",)
+        ordering = ("ser", "subsection",)
 
 
-class Sources(models.Model):
+class Components(models.Model):
     id = models.BigAutoField(primary_key=True)
     mosaic = models.ForeignKey(Mosaics, models.DO_NOTHING)
     island_id = models.TextField(blank=True, null=True)
@@ -87,6 +147,22 @@ class Sources(models.Model):
 
     class Meta:
         managed = False
+        db_table = 'components'
+        verbose_name_plural = 'Components'
+        ordering = ("mosaic_id", "component_name", "ra_deg_cont", "dec_deg_cont")
+
+
+class Sources(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    component = models.ForeignKey(Components, models.DO_NOTHING)
+    wise = models.ForeignKey(AllWise, models.DO_NOTHING)
+    separation = models.FloatField()
+
+    def __str__(self):
+        return str(self.id)
+
+    class Meta:
+        managed = False
         db_table = 'sources'
         verbose_name_plural = 'Sources'
-        ordering = ("component_name", "ra_deg_cont", "dec_deg_cont")
+        ordering = ("id", )

@@ -5,8 +5,38 @@ CREATE EXTENSION pg_sphere;
 
 CREATE SCHEMA "emucat" AUTHORIZATION "admin";
 
+
+CREATE TABLE emucat.source_extraction_regions (
+    "id" BIGSERIAL PRIMARY KEY,
+    "name" varchar NOT NULL,
+    "extent" spoly NOT NULL,
+    "centre" spoint NOT NULL,
+
+    unique ("name")
+);
+
+CREATE TABLE emucat.scheduling_blocks (
+    "id" BIGSERIAL PRIMARY KEY,
+    "sb_num" bigint NOT NULL,
+
+    unique ("sb_num")
+);
+
+CREATE TABLE emucat.mosaic_prerequisites (
+    "id" BIGSERIAL PRIMARY KEY,
+    "sb_id" bigint NOT NULL,
+    "ser_id" bigint NOT NULL,
+
+    unique ("sb_id", "ser_id")
+);
+
+ALTER TABLE emucat.mosaic_prerequisites ADD FOREIGN KEY ("sb_id") REFERENCES emucat.scheduling_blocks ("id") ON DELETE CASCADE;
+ALTER TABLE emucat.mosaic_prerequisites ADD FOREIGN KEY ("ser_id") REFERENCES emucat.source_extraction_regions ("id") ON DELETE CASCADE;
+
+
 CREATE TABLE emucat.mosaics (
     "id" BIGSERIAL PRIMARY KEY,
+    "ser_id" bigint NOT NULL,
     "table_version" varchar NOT NULL,
     "image_file" varchar NOT NULL,
     "flag_subsection" boolean DEFAULT False NOT NULL,
@@ -34,10 +64,12 @@ CREATE TABLE emucat.mosaics (
     "reference_frequency" double precision NOT NULL,
     "threshold_actual" double precision NOT NULL,
 
-    unique ("image_file", "subsection")
+    unique ("ser_id", "subsection")
 );
 
-CREATE TABLE emucat.sources (
+ALTER TABLE emucat.mosaics ADD FOREIGN KEY ("ser_id") REFERENCES emucat.source_extraction_regions ("id") ON DELETE CASCADE;
+
+CREATE TABLE emucat.components (
     "id" BIGSERIAL PRIMARY KEY,
     "mosaic_id" bigint NOT NULL,
     "island_id" varchar NOT NULL,
@@ -79,14 +111,32 @@ CREATE TABLE emucat.sources (
     "flag_c4" integer NOT NULL,
     "comment" varchar NOT NULL,
 
-    unique ("component_name", "ra_deg_cont", "dec_deg_cont")
+    unique ("mosaic_id", "component_name", "ra_deg_cont", "dec_deg_cont")
 );
 
-CREATE INDEX sources_unique_index ON emucat.sources ("component_name", "ra_deg_cont", "dec_deg_cont");
+CREATE INDEX components_unique_index ON emucat.components ("component_name", "ra_deg_cont", "dec_deg_cont");
+ALTER TABLE emucat.components ADD FOREIGN KEY ("mosaic_id") REFERENCES emucat.mosaics ("id") ON DELETE CASCADE;
 
-ALTER TABLE emucat.sources ADD FOREIGN KEY ("mosaic_id") REFERENCES emucat.mosaics ("id") ON DELETE CASCADE;
+CREATE TABLE emucat.allwise (
+    "designation" varchar PRIMARY KEY,
+    "ra_dec" spoint NOT NULL
+);
 
-ALTER TABLE emucat.sources OWNER TO "admin";
+CREATE INDEX allwise_unique_index ON emucat.allwise USING GIST ("ra_dec");
+
+CREATE TABLE emucat.sources (
+    "id" BIGSERIAL PRIMARY KEY,
+    "component_id" bigint NOT NULL,
+    "wise_id" varchar NOT NULL,
+    "separation" double precision NOT NULL,
+
+    unique ("component_id", "wise_id")
+);
+
+ALTER TABLE emucat.sources ADD FOREIGN KEY ("component_id") REFERENCES emucat.components ("id") ON DELETE CASCADE;
+ALTER TABLE emucat.sources ADD FOREIGN KEY ("wise_id") REFERENCES emucat.allwise ("designation") ON DELETE CASCADE;
+
+ALTER TABLE emucat.components OWNER TO "admin";
 
 GRANT ALL PRIVILEGES ON DATABASE emucat TO "admin";
 GRANT ALL PRIVILEGES ON DATABASE emucat TO "gavoadmin";
@@ -94,18 +144,33 @@ GRANT ALL PRIVILEGES ON DATABASE emucat TO "gavo";
 
 GRANT CONNECT ON DATABASE emucat TO "gavoadmin";
 GRANT USAGE ON SCHEMA "emucat" TO "gavoadmin";
+GRANT SELECT ON TABLE emucat.source_extraction_regions TO "gavoadmin";
+GRANT SELECT ON TABLE emucat.scheduling_blocks TO "gavoadmin";
+GRANT SELECT ON TABLE emucat.mosaic_prerequisites TO "gavoadmin";
 GRANT SELECT ON TABLE emucat.mosaics TO "gavoadmin";
+GRANT SELECT ON TABLE emucat.components TO "gavoadmin";
 GRANT SELECT ON TABLE emucat.sources TO "gavoadmin";
+GRANT SELECT ON TABLE emucat.allwise TO "gavoadmin";
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA emucat TO "gavoadmin";
 
 GRANT CONNECT ON DATABASE emucat TO "gavo";
 GRANT USAGE ON SCHEMA "emucat" TO "gavo";
+GRANT SELECT ON TABLE emucat.source_extraction_regions TO "gavo";
+GRANT SELECT ON TABLE emucat.scheduling_blocks TO "gavo";
+GRANT SELECT ON TABLE emucat.mosaic_prerequisites TO "gavo";
 GRANT SELECT ON TABLE emucat.mosaics TO "gavo";
+GRANT SELECT ON TABLE emucat.components TO "gavo";
 GRANT SELECT ON TABLE emucat.sources TO "gavo";
+GRANT SELECT ON TABLE emucat.allwise TO "gavo";
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA emucat TO "gavo";
 
 GRANT CONNECT ON DATABASE emucat TO "untrusted";
 GRANT USAGE ON SCHEMA "emucat" TO "untrusted";
+GRANT SELECT ON TABLE emucat.source_extraction_regions TO "untrusted";
+GRANT SELECT ON TABLE emucat.scheduling_blocks TO "untrusted";
+GRANT SELECT ON TABLE emucat.mosaic_prerequisites TO "untrusted";
 GRANT SELECT ON TABLE emucat.mosaics TO "untrusted";
+GRANT SELECT ON TABLE emucat.components TO "untrusted";
 GRANT SELECT ON TABLE emucat.sources TO "untrusted";
+GRANT SELECT ON TABLE emucat.allwise TO "untrusted";
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA emucat TO "untrusted";

@@ -4,8 +4,30 @@
     <meta name="copyright" format="plain">EMUCat</meta>
     <meta name="creationDate">2020-04-30T12:00:00Z</meta>
 
+   <table id="source_extraction_regions" onDisk="True" adql="True">
+      <column name="id" type="bigint" unit="" ucd="meta.id;meta.main"/>
+      <column name="name" type="text" unit="" ucd="meta.id"/>
+      <column name="extent" ucd="" type="spoly" unit=""/>
+      <column name="centre" ucd="pos.eq.ra;pos.eq.dec" type="spoint" unit=""/>
+   </table>
+
+   <table id="scheduling_blocks" onDisk="True" adql="True">
+      <column name="id" type="bigint" unit="" ucd="meta.id;meta.main"/>
+      <column name="sb_num" type="text" unit="" ucd="meta.id"/>
+   </table>
+
+   <table id="mosaic_prerequisites" onDisk="True" adql="True">
+      <column name="id" type="bigint" unit="" ucd="meta.id;meta.main"/>
+      <column name="sb_num" type="bigint" unit="" ucd="meta.id"/>
+      <column name="ser_id" type="bigint" unit="" ucd="meta.id"/>
+
+      <foreignKey source="sb_num" dest="id" inTable="scheduling_blocks"/>
+      <foreignKey source="ser_id" dest="id" inTable="source_extraction_regions"/>
+   </table>
+
    <table id="mosaics" onDisk="True" adql="True">
-      <column name="id" type="bigint" unit="" ucd="meta.id;meta.main" required="True"/>
+      <column name="id" type="bigint" unit="" ucd="meta.id;meta.main"/>
+      <column name="ser_id" type="bigint" unit="" ucd="meta.id"/>
       <column name="table_version" ucd="meta.version" type="text"/>
       <column name="image_file" ucd="meta.file;meta.fits" type="text"/>
       <column name="flag_subsection" ucd="meta.code"/>
@@ -32,11 +54,13 @@
       <column name="flag_atrous" ucd="meta.code" type="boolean"/>
       <column name="reference_frequency" ucd="em.freq;meta.main" type="double precision" unit="Hz"/>
       <column name="threshold_actual" ucd="" type="double precision" unit="Jy/beam"/>
+
+      <foreignKey source="ser_id" dest="id" inTable="source_extraction_regions"/>
    </table>
 
-   <table id="sources" onDisk="True" adql="True">
+   <table id="components" onDisk="True" adql="True">
       <index columns="id"/>
-      <column name="id" type="bigint" unit="" ucd="meta.id;meta.main" required="True" verbLevel="1"/>
+      <column name="id" type="bigint" unit="" ucd="meta.id;meta.main"/>
       <column name="mosaic_id" type="bigint" unit="" ucd="meta.id"/>
       <column name="island_id" ucd="meta.id.parent" type="text"/>
       <column name="component_id" ucd="meta.id;meta.main" type="text"/>
@@ -78,11 +102,30 @@
       <column name="comment" ucd="meta.note" type="text"/>
 
       <foreignKey source="mosaic_id" dest="id" inTable="mosaics"/>
+   </table>
 
+    <table id="allwise" onDisk="True" adql="True">
+      <column name="designation" type="text" unit="" ucd="meta.id;meta.main"/>
+      <column name="ra_dec" type="spoint" unit="" ucd="pos.eq.ra;pos.eq.dec"/>
+   </table>
+
+   <table id="sources" onDisk="True" adql="True">
+      <column name="id" type="bigint" unit="" ucd="meta.id;meta.main"/>
+      <column name="component_id" type="bigint" unit="" ucd="meta.id"/>
+      <column name="wise_id" type="bigint" unit="" ucd="meta.id"/>
+      <column name="separation" type="double precision" unit="rad" ucd="meta.id"/>
+
+      <foreignKey source="component_id" dest="id" inTable="components"/>
+      <foreignKey source="wise_id" dest="id" inTable="allwise"/>
    </table>
 
    <data id="import">
+      <make table="source_extraction_regions"/>
+      <make table="scheduling_blocks"/>
+      <make table="mosaic_prerequisites"/>
       <make table="mosaics"/>
+      <make table="components"/>
       <make table="sources"/>
+      <make table="allwise"/>
    </data>
 </resource>
