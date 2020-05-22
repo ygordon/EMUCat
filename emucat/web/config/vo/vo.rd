@@ -112,11 +112,11 @@
    <table id="sources" onDisk="True" adql="True">
       <column name="id" type="bigint" unit="" ucd="meta.id;meta.main"/>
       <column name="component_id" type="bigint" unit="" ucd="meta.id"/>
-      <column name="wise_id" type="bigint" unit="" ucd="meta.id"/>
+      <column name="wise_id" type="text" unit="" ucd="meta.id"/>
       <column name="separation" type="double precision" unit="rad" ucd="meta.id"/>
 
       <foreignKey source="component_id" dest="id" inTable="components"/>
-      <foreignKey source="wise_id" dest="id" inTable="allwise"/>
+      <foreignKey source="wise_id" dest="designation" inTable="allwise"/>
    </table>
 
    <data id="import">
