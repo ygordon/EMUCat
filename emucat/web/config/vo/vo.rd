@@ -13,7 +13,7 @@
 
    <table id="scheduling_blocks" onDisk="True" adql="True">
       <column name="id" type="bigint" unit="" ucd="meta.id;meta.main"/>
-      <column name="sb_num" type="text" unit="" ucd="meta.id"/>
+      <column name="sb_num" type="bigint" unit="" ucd="meta.id"/>
    </table>
 
    <table id="mosaic_prerequisites" onDisk="True" adql="True">
