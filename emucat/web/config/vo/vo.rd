@@ -18,7 +18,7 @@
 
    <table id="mosaic_prerequisites" onDisk="True" adql="True">
       <column name="id" type="bigint" unit="" ucd="meta.id;meta.main"/>
-      <column name="sb_num" type="bigint" unit="" ucd="meta.id"/>
+      <column name="sb_id" type="bigint" unit="" ucd="meta.id"/>
       <column name="ser_id" type="bigint" unit="" ucd="meta.id"/>
 
       <foreignKey source="sb_num" dest="id" inTable="scheduling_blocks"/>
