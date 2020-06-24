@@ -9,7 +9,7 @@ CREATE SCHEMA "emucat" AUTHORIZATION "admin";
 CREATE TABLE emucat.source_extraction_regions (
     "id" BIGSERIAL PRIMARY KEY,
     "name" varchar NOT NULL,
-    "extent" spoly NOT NULL,
+    "extent" sbox NOT NULL,
     "centre" spoint NOT NULL,
 
     unique ("name")

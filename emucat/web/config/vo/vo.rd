@@ -7,7 +7,7 @@
    <table id="source_extraction_regions" onDisk="True" adql="True">
       <column name="id" type="bigint" unit="" ucd="meta.id;meta.main"/>
       <column name="name" type="text" unit="" ucd="meta.id"/>
-      <column name="extent" ucd="" type="spoly" unit=""/>
+      <column name="extent" ucd="" type="sbox" unit=""/>
       <column name="centre" ucd="pos.eq.ra;pos.eq.dec" type="spoint" unit=""/>
    </table>
 
