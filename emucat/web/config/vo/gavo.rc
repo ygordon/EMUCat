@@ -2,3 +2,9 @@
 bindAddress:
 serverPort: 8080
 serverURL: http://localhost:8080
+sqlTimeout: 300
+
+[async]
+defaultExecTimeSync: 3600
+maxTAPRunning: 12
+maxUserUWSRunningDefault: 12
