@@ -9,3 +9,6 @@ defaultExecTimeSync: 3600
 maxTAPRunning: 12
 maxUserUWSRunningDefault: 12
 hardMAXREC: 70000000
+
+[db]
+indexWorkMem: 32768
