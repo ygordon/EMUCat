@@ -8,3 +8,4 @@ sqlTimeout: 300
 defaultExecTimeSync: 3600
 maxTAPRunning: 12
 maxUserUWSRunningDefault: 12
+hardMAXREC: 70000000
