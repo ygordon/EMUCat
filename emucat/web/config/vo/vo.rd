@@ -69,6 +69,7 @@
       <column name="dec_hms_cont" ucd="pos.eq.dec" type="text" unit=""/>
       <column name="ra_deg_cont" ucd="pos.eq.ra;meta.main" type="double precision" unit="deg"/>
       <column name="dec_deg_cont" ucd="pos.eq.dec;meta.main" type="double precision" unit="deg"/>
+       <column name="ra_dec" type="spoint" unit="" ucd="pos.eq.ra;pos.eq.dec"/>
       <column name="ra_err" ucd="stat.error;pos.eq.ra" type="double precision" unit="arcsec" />
       <column name="dec_err" ucd="stat.error;pos.eq.dec" type="double precision" unit="arcsec"/>
       <column name="freq" ucd="em.freq" type="double precision" unit="MHz"/>

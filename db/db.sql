@@ -77,6 +77,7 @@ CREATE TABLE emucat.components (
     "component_name" varchar NOT NULL,
     "ra_hms_cont" varchar NOT NULL,
     "dec_hms_cont" varchar NOT NULL,
+    "ra_dec" spoint NOT NULL,
     "ra_deg_cont" double precision NOT NULL,
     "dec_deg_cont" double precision NOT NULL,
     "ra_err" double precision NOT NULL,
