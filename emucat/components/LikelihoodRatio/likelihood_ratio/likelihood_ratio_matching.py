@@ -236,15 +236,29 @@ def random_points_on_a_sphere( npoints, ra_limits, dec_limits ):
     ## RA is uniform in azimuthal angle
     np.random.seed(30)
     random_ra = np.random.uniform( ra_limits[0], ra_limits[1], npoints )
+    
+    ### - YG, account for RA wrapping here! - need to account in RA spread too
+    if ra_limits[1] - ra_limits[0] > np.pi:
+        amin_new = ra_limits[1] - 2*np.pi
+        random_ra = np.random.uniform(amin_new, ra_limits[0], npoints)
+        random_ra[(random_ra<0)] = random_ra[(random_ra<0)] + 2*np.pi
 
     ## Dec is not
+#    np.random.seed(20)
+#    random_angles = np.random.uniform( 0, 1, npoints ) * ( dec_limits[1] - dec_limits[0] ) + dec_limits[0]
+#    random_dec = np.arcsin( random_angles )####why does this line exist (polar clustering), breaks code?
+
     np.random.seed(20)
-    random_angles = np.random.uniform( 0, 1, npoints ) * ( dec_limits[1] - dec_limits[0] ) + dec_limits[0]
-    random_dec = np.arcsin( random_angles )####why does this line exist, breaks code?
+    random_angles = np.random.uniform( 0, 1, npoints )
+    random_angles = np.arcsin(random_angles)
+    random_dec = random_angles * ( dec_limits[1] - dec_limits[0] ) + dec_limits[0]
+
+
 
     ## convert back to degrees
     random_ra = random_ra * 180. / np.pi
     random_dec = random_dec * 180. / np.pi
+
 
     return random_ra, random_dec
 
@@ -271,22 +285,39 @@ def find_Q0_fleuren( band, radio_dat, band_dat, radii, mask_image, ra_col='RA', 
         else:
             print( "Random radio catalogue does not exist or overwrite=True." )
 
-            ## boundaries for random catalogue
+
+            ###YG edits - account for RA wrap at 360
+            ## boundaries for random catalogue -- doesn't account for RA wrapping
             ## expand the area and apply the mask afterwards
-            min_RA = np.min( radio_dat['RA'] ) 
-            max_RA = np.max( radio_dat['RA'] ) 
-            min_DEC = np.min( radio_dat['DEC'] ) 
-            max_DEC = np.max( radio_dat['DEC'] ) 
+            min_RA = np.min( radio_dat['RA'] )
+            max_RA = np.max( radio_dat['RA'] )
+            min_DEC = np.min( radio_dat['DEC'] )
+            max_DEC = np.max( radio_dat['DEC'] )
             RA_spread = max_RA - min_RA
+            
+            ###YG - alter RA_spread for RA wrapping instances - move above padding
+            if RA_spread > 180:
+                a_array = np.array(radio_dat['RA'])
+                new_max = max(a_array[(a_array<180)])
+                new_min = min(a_array[(a_array>180)])
+                RA_spread = new_max - new_min + 360
+
+                max_RA = new_min
+                min_RA = new_max
+            
+                min_RA = min_RA + RA_spread * 0.05
+                max_RA = max_RA - RA_spread * 0.05
+            else:
+                min_RA = min_RA - RA_spread * 0.05
+                max_RA = max_RA + RA_spread * 0.05
+            
             DEC_spread = max_DEC - min_DEC
-            ## pad the area by 5 percent
-            min_RA = min_RA - RA_spread * 0.05
-            max_RA = max_RA + RA_spread * 0.05
             min_DEC = min_DEC - DEC_spread * 0.05
             max_DEC = max_DEC + DEC_spread * 0.05
 
-            ## randomly generate RA/DEC pairs 
-            rand_RA, rand_DEC = random_points_on_a_sphere( n_srcs*4, np.array([min_RA,max_RA]), np.array([min_DEC,max_DEC]) )
+
+            ## randomly generate RA/DEC pairs - npoints to n_src*10
+            rand_RA, rand_DEC = random_points_on_a_sphere( n_srcs*20, np.array([min_RA,max_RA]), np.array([min_DEC,max_DEC]) )
             ## create a table and write a fits catalogue (for apply_mask)
             t = Table()
             t['RA'] = rand_RA
@@ -413,9 +444,11 @@ def LR_and_reliability( band, band_dat, radio_dat, qm_nm, sigma_pos, mag_bins, r
 
     print( 'Found a total of %s candidates'%str(n_cand) )
     outfile = band + '_LR_matches.dat'
+#    outfile = band + '_LR_matches.xml' #updated to output VOTab for EMUcat - yg
     print( 'Saving matches to %s'%outfile )
     t.write( outfile, format='ascii' )
-    
+#    t.write( outfile, format='votable' ) #updated to output VOTab for EMUcat - yg
+
     return( outfile )
 
 
