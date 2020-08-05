@@ -1,1 +1,73 @@
-Placeholder for the Singularity container definition
+Bootstrap: library
+From: ubuntu:20.04
+
+%post
+    apt-get update && apt-get install -y software-properties-common
+    add-apt-repository main
+    add-apt-repository universe
+    add-apt-repository restricted
+    add-apt-repository multiverse
+
+    apt-get update && apt-get install -y python3 && apt-get install -y python3-argparse-manpage python3-numpy python3-pandas  python3-astropy  python3-scipy  python3-matplotlib python3-aplpy
+    apt-get update && apt-get install -y wget
+ 
+    wget https://raw.githubusercontent.com/AusSRC/EMUCat/outputtest/emucat/components/LikelihoodRatio/likelihood_ratio/likelihood_ratio_matching.py
+    cd ..
+    mkdir input
+    mkdir output
+
+%runscript
+   #!/bin/sh
+   python3 likelihood_ratio_matching.py --config_file $1 --overwrite $2 $3 $4
+
+%labels
+    Author 00@ICRAR
+    Version v0.0.1
+
+%help
+    **Preparing to run**
+
+    1. You will need the following, in binary fits table foramt:  
+
+    - Multi-wavelength catalogue with magnitudes for the bands you wish to match  
+    - Radio catalogue  
+    - Mask image for the multi-wavelength data  
+    The assumption here is that the radio data covers an area larger than the multi-wavelength data. If this is not the case, you will need to trim your multi-wavelength mask down. 
+    - Configuration file.
+    2. Set up the configuration file. Please look at the example configuration file and update the parameters as appropriate. This is meant for you to be able to use the software flexibly for catalogues where the column names might be slightly different (e.g., RA vs. ALPHA_J2000, etc.). Please surround strings with quotation marks. The following parameters are set in the configuration file:
+
+    **outdir**            *the out directory where data will be written,should be ../input*
+    **bands**             *a comma-separated list of bands for which you want to run the likelihood ratio (case sensitive)*  
+    **id_col**            *the column name for the ID column*  
+    **ra_col**            *the column name for right ascension*  
+    **dec_col**           *the column name for declination*  
+    **halo_col**          *the column name for halo masks (for stars -- assumed 1 = flag, 0 = no flag)*  
+    **sg_col**             *the column name for star / galaxy separation (assumed 1 = galaxy, 0 = star)*  
+    **mag_col**           *an example column name for the magnitude column, with 'X' instead of the band -- e.g.: mag_X*  
+    **mag_err_col**       *same as mag_col but for the errors on the magnitude column -- e.g.: mag_err_X*  
+    **flux_col**          *Total flux column name from radio catalogue*  
+    **flux_err_col**      *Column name for errors on total flux*  
+    **beam_size**         *the beam size in arcsec*  
+    **cal_errors**        *calibration errors (e.g., 0.1 is 10 percent)*
+    
+    the example is:
+     parameter	         value
+     outdir		'output'
+     bands		'w1'
+     id_col		'unwise_detid'
+     ra_col		'ra'
+     dec_col		'dec'
+     mask_col    	'Mask'
+     sg_col		'stargal'
+     mag_col		'X_mag'
+     mag_err_col	'X_mag_err'
+     flux_col	        'flux_int'
+     flux_err_col	'flux_int_err'
+     beam_size   	10
+     cal_errors  	0.1
+    3. Bind paths of the host system and the container. There are a 'input' and a 'output' file folders in the container, there should be an corresponding folders repectively in the host system. These two pairs of folders need to be bind together, and left the input files in to the 'input' folder and we will get the output files in the 'output' folder.
+    4. Copy all the input files to the /input folder, then run the container like: 
+     "sudo singularity run --bind /input:/input,/output:/output emu.sif /input/lr_config.txt /input/3184m576_pw1cat.fits /input/EMU_PS9442_compcat.fits /input/uw_3184m576_mask.fits" 
+     or:
+
+     "sudo singularity run --bind /input,/output emu.sif /input/lr_config.txt /input/3184m576_pw1cat.fits /input/EMU_PS9442_compcat.fits /input/uw_3184m576_mask.fits"
