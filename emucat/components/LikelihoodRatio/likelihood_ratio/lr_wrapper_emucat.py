@@ -123,7 +123,7 @@ def run_lr(fakefile='fakemask.fits', racol='ra', deccol='dec'):
     fake_mask(catfile=args.mwcat, acol=racol, dcol=deccol, outfile=fakefile)
     mask = fakefile
 
-    ###run LR code - comment out during testing once confirmed works
+    ###run LR code
     command_args = ['python3', 'likelihood_ratio_matching.py', fitsnames[0],
                     fitsnames[1], mask]
     lr = subprocess.Popen(command_args, stdout=subprocess.PIPE, universal_newlines=True)
@@ -138,34 +138,32 @@ def run_lr(fakefile='fakemask.fits', racol='ra', deccol='dec'):
     for filename in file_list:
         if '_LR_matches.dat' in filename:
             newname = outdir+filename.split('.')[0] + '.xml'
-            output_to_VOTable(fname_in=filename, fname_out=newname)
+            output_to_VOTable(fname_in=outdir+filename, fname_out=newname)
             keep_files.append(newname)
 
     ##tidy up - get rid of surplus (add in moving files to target directory)
-    ###this step may not be needed with Lingling's changes to the LR code
-    ###or at least is likely to need changing - test with lingling's new code
     for filename in file_list:
         if filename not in keep_files:
-            os.remove(filename)
+            os.remove(outdir+filename)
+
+    ###repeat for working directory if outdir != ''
+    if outdir!='':
+        working_directory_list = os.listdir()
+        for filename in working_directory_list:
+            if filename not in keep_files:
+                os.remove(filename)
+
     return
 
 ###########################################################################
-####test
 
-
-###for now assume data exists in same directory
-#mwcat = '3184m576_pw1cat.xml' - cmd line argument
-#radcat = 'EMU_PS9442_compcat.xml' - cmd line argument
-#mask = 'uw_3184m576_mask.fits' ## - needs to be grabbed/faked on the fly
-#mask = 'fakemask.fits' ## - fake test
 
 run_lr()
 
+###to do:
+##1) upgrade to grab and mosaic WISE images
+##2) test with multi-band data
+##3) improve stargal and mask flagging in mwcat
 
-###to do: adjust to create fake mask image (upgrade to grab and mosaic WISE images)
 
 
-###########################################################################
-
-
-###########################################################################
