@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!python3
 import os
 import sys
 import xml.etree.ElementTree as ET
@@ -8,6 +8,7 @@ import urllib.request
 import argparse
 import logging
 import json
+import configparser
 
 from retry import retry
 
@@ -52,9 +53,14 @@ def download_file(url, check_exists, output, timeout):
         logging.info(f"Download complete: {output}")
 
 
-def download_casda_obscore_fits(rowset, check_exists, output_dir, timeout):
+def download_casda_obscore_fits(rowset, check_exists, output_dir, timeout, credentials):
     weights = []
     images = []
+
+    config = configparser.ConfigParser()
+    config.read(credentials)
+    username = config['credentials']['casda_user']
+    password = config['credentials']['casda_passwd']
 
     ns = {'ivoa': 'http://www.ivoa.net/xml/VOTable/v1.3'}
     for row in rowset:
@@ -63,9 +69,6 @@ def download_casda_obscore_fits(rowset, check_exists, output_dir, timeout):
         dl = dl.decode("utf-8")
         filename = filename.decode("utf-8")
         req = urllib.request.Request(dl)
-
-        username = os.environ['casda_user']
-        password = os.environ['casda_pass']
 
         credentials = ('%s:%s' % (username, password))
         encoded_credentials = base64.b64encode(credentials.encode('ascii'))
@@ -103,6 +106,7 @@ def main():
     parser.add_argument('-l', '--list', nargs='+', help='List of observing block numbers.', type=int, required=True)
     parser.add_argument('-o', '--output', help='Output directory.', type=str, required=True)
     parser.add_argument('-m', '--manifest', help='File manifest (json)', type=str, required=True, default='./manifest.json')
+    parser.add_argument('-p', '--credentials', help='Credentials file.', required=True)
     parser.add_argument('-c', '--check_exists', type=str2bool, nargs='?',
                         const=True, help='Ignore files if they already exist.', required=False, default=False)
     parser.add_argument('-n', '--num_files', help='Number of files expected per observation block.',
@@ -143,7 +147,8 @@ def main():
     result = download_casda_obscore_fits(rowset,
                                             check_exists=args.check_exists,
                                             output_dir=args.output,
-                                            timeout=args.timeout)
+                                            timeout=args.timeout,
+                                            credentials=args.credentials)
 
     with open(args.manifest, 'w') as json_file:
         json.dump(result, json_file)
