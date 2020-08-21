@@ -1,0 +1,26 @@
+Bootstrap: library
+From: ubuntu:20.04
+
+%post
+    apt -y install software-properties-common
+    apt-add-repository universe
+    apt update
+    apt -y upgrade
+
+    apt install -y python3-setuptools
+    apt install -y python3
+    apt install -y wget
+    apt install -y python3-pip
+
+    pip3 install pyvo retry
+
+    mkdir /input
+    mkdir /output
+    mkdir /scripts
+    cd /scripts
+    wget https://raw.githubusercontent.com/AusSRC/EMUCat/master/emucat/components/general/scripts/casda.py
+    chmod +x casda.py
+
+%runscript
+    cd /scripts
+    exec /bin/bash "$@"
