@@ -19,7 +19,7 @@ logging.basicConfig(stream=sys.stdout,
                     format='[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s')
 
 
-@retry(exceptions=urllib.error.URLError, tries=3, delay=1800, backoff=300)
+@retry(exceptions=urllib.error.URLError, tries=30, delay=100, backoff=5)
 def download_file(url, check_exists, output, timeout):
     # Large timeout is necessary as the file may need to be stage from tape
     logging.info(f"Requesting output: {output}")
