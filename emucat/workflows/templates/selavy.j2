@@ -1,10 +1,9 @@
-Selavy.image                                    = /mnt/data/emu/data/linmos/image.i.pilot10.cont.smooth.linmos.taylor.0.fits
-Selavy.Weights.weightsImage                     = /mnt/data/emu/data/linmos/weights.i.pilot10.cont.smooth.linmos.taylor.0.fits
+Selavy.image                                    = {{ image }}
+Selavy.Weights.weightsImage                     = {{ weight }}
 
-Selavy.logFile					                = /mnt/data/emu/log/selavy.log
-Selavy.resultsFile                              = /mnt/data/emu/data/selvay/selavy-image.cont.taylor.0.txt
-Selavy.votFile					                = /mnt/data/emu/data/selvay/results.pilot10.xml
-Selavy.subimageAnnotationFile			        = /mnt/data/emu/data/selvay/selavy-SubimageLocations.ann
+Selavy.resultsFile                              = {{ results }}
+Selavy.votFile                                  = {{ votable }}
+Selavy.subimageAnnotationFile                   = {{ annotations }}
 Selavy.nsubx                                    = 5
 Selavy.nsuby                                    = 3
 Selavy.overlapx                                 = 0
@@ -14,15 +13,15 @@ Selavy.imagetype                                = fits
 Selavy.VariableThreshold                        = false
 Selavy.VariableThreshold.boxSize                = 50
 Selavy.VariableThreshold.imagetype              = fits
-Selavy.VariableThreshold.reuse			        = false
+Selavy.VariableThreshold.reuse                  = false
 
-Selavy.threshold				                = 0.001
-Selavy.WeightScaling				            = true
-Selavy.Weights					                = true
+Selavy.threshold                                = 0.001
+Selavy.WeightScaling                            = true
+Selavy.Weights                                  = true
 Selavy.Weights.weightsCutoff                    = 0.09
 Selavy.spectralTermsFromTaylor                  = true
 Selavy.findSpectralTerms                        = [true, false]
-#Selavy.snrCut                                   = 5
+#Selavy.snrCut                                  = 5
 Selavy.flagGrowth                               = false
 Selavy.growthThreshold                          = 3
 
