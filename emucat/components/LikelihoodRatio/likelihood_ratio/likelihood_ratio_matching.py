@@ -104,7 +104,8 @@ def get_unmasked_area( mask_image, overwrite=True ):
     print( 'Area is %s (in arcsec^2)'%str(area_asec) )
     return( area_asec )
 
-def make_master_cat( multiwave_cat, overwrite=False, outdir='.', my_bands='J,H,Ks', id_col='UID', ra_col='RA', dec_col='DEC', mask_col='Mask', sg_col='SGsep', mag_col='mag_X', mag_err_col='mag_err_X' ):
+def make_master_cat( multiwave_cat, overwrite=False, outdir='.', my_bands='J,H,Ks', id_col='UID', ra_col='RA',
+                     dec_col='DEC', mask_col='Mask', sg_col='SGsep', mag_col='mag_X', mag_err_col='mag_err_X' ):
 
     ## check if output file exists
     outtmp = multiwave_cat.split('/')[-1]
@@ -177,7 +178,8 @@ def make_mag_bins( magnitudes ):
         mag_bins = np.insert( mag_bins, 0, np.min( mag_bins )-0.4 )
     return( mag_bins )
 
-def make_match_magnitudes( band, band_data, radio_data, outfile='', ra_col='RA', dec_col='DEC', mag='', r_max=0.0, overwrite=True ):
+def make_match_magnitudes( band, band_data, radio_data, outfile='', ra_col='RA', dec_col='DEC', rad_ra_col='RA',
+                           rad_dec_col='DEC', rad_id_col='Source_id', mag='', r_max=0.0, overwrite=True ):
     
     ## get number of radio sources
     n_radio_sources = radio_data.shape[0]
@@ -194,10 +196,10 @@ def make_match_magnitudes( band, band_data, radio_data, outfile='', ra_col='RA',
         match_mags = []
         radio_ids = []
         for x in np.arange( n_radio_sources ):
-            distances = cenang( radio_data['RA'][x], radio_data['DEC'][x], band_data[ra_col], band_data[dec_col] )
+            distances = cenang( radio_data[rad_ra_col][x], radio_data[rad_dec_col][x], band_data[ra_col], band_data[dec_col] )
             candidate_idx = np.where( distances <= r_max_deg )[0]
             match_mags = match_mags + band_data[mag][candidate_idx].tolist()
-            radio_ids = radio_ids + np.repeat( radio_data['Source_id'][x], len(candidate_idx) ).tolist()
+            radio_ids = radio_ids + np.repeat( radio_data[rad_id_col][x], len(candidate_idx) ).tolist()
         ## make a table and write the file
         m_mags = Table()
         m_mags['radio_id'] = Column( radio_ids )
@@ -206,13 +208,12 @@ def make_match_magnitudes( band, band_data, radio_data, outfile='', ra_col='RA',
 
     return( m_mags )
 
-def find_number_no_counterparts( radio_dat, band_dat, radii, ra_col='RA', dec_col='DEC' ):
-
+def find_number_no_counterparts( radio_dat, band_dat, radii, ra_col='RA', dec_col='DEC', rad_ra_col='RA', rad_dec_col='DEC'):
     ## what is the number of sources with no possible counterparts
     n_counterparts = np.zeros( (radio_dat.shape[0], len(radii)) )
     for xx in np.arange( radio_dat.shape[0] ):
         ## calculate the distance from the source to all other sources, convert to asec
-        distances = cenang( radio_dat['RA'][xx], radio_dat['DEC'][xx], band_dat[ra_col], band_dat[dec_col] ) * 60. * 60. 
+        distances = cenang( radio_dat[rad_ra_col][xx], radio_dat[rad_dec_col][xx], band_dat[ra_col], band_dat[dec_col] ) * 60. * 60.
         ## loop through radii to find number of counterparts
         for yy in np.arange( len(radii) ):
             n_counterparts[xx,yy] = len( np.where(distances <= radii[yy])[0] )
@@ -263,7 +264,7 @@ def random_points_on_a_sphere( npoints, ra_limits, dec_limits ):
     return random_ra, random_dec
 
 
-def find_Q0_fleuren( band, radio_dat, band_dat, radii, mask_image, ra_col='RA', dec_col='DEC', overwrite=True ):
+def find_Q0_fleuren( band, radio_dat, band_dat, radii, mask_image, ra_col='RA', dec_col='DEC', rad_ra_col='RA', rad_dec_col='DEC', overwrite=True ):
 
 
     ## first check if the number of no counterparts has already been found
@@ -275,7 +276,8 @@ def find_Q0_fleuren( band, radio_dat, band_dat, radii, mask_image, ra_col='RA', 
     else:
         ## first find the number of radio sources with no counterparts
         ##  (as a function of radius)
-        REAL_no_counterparts = find_number_no_counterparts( radio_dat, band_dat, radii, ra_col=ra_col, dec_col=dec_col )
+        REAL_no_counterparts = find_number_no_counterparts( radio_dat, band_dat, radii, ra_col=ra_col, dec_col=dec_col,
+                                                            rad_ra_col=rad_ra_col, rad_dec_col=rad_dec_col)
 
         ## check if a random radio catalogue already exists
         n_srcs = radio_dat.shape[0]
@@ -289,15 +291,15 @@ def find_Q0_fleuren( band, radio_dat, band_dat, radii, mask_image, ra_col='RA', 
             ###YG edits - account for RA wrap at 360
             ## boundaries for random catalogue -- doesn't account for RA wrapping
             ## expand the area and apply the mask afterwards
-            min_RA = np.min( radio_dat['RA'] )
-            max_RA = np.max( radio_dat['RA'] )
-            min_DEC = np.min( radio_dat['DEC'] )
-            max_DEC = np.max( radio_dat['DEC'] )
+            min_RA = np.min( radio_dat[rad_ra_col] )
+            max_RA = np.max( radio_dat[rad_ra_col] )
+            min_DEC = np.min( radio_dat[rad_dec_col] )
+            max_DEC = np.max( radio_dat[rad_dec_col] )
             RA_spread = max_RA - min_RA
             
             ###YG - alter RA_spread for RA wrapping instances - move above padding
             if RA_spread > 180:
-                a_array = np.array(radio_dat['RA'])
+                a_array = np.array(radio_dat[rad_ra_col])
                 new_max = max(a_array[(a_array<180)])
                 new_min = min(a_array[(a_array>180)])
                 RA_spread = new_max - new_min + 360
@@ -338,7 +340,7 @@ def find_Q0_fleuren( band, radio_dat, band_dat, radii, mask_image, ra_col='RA', 
 
         ## find the number of random radio sources with no counterparts
         ##  (as a function of radius)
-        RANDOM_no_counterparts = find_number_no_counterparts( masked_dat, band_dat, radii, ra_col=ra_col, dec_col=dec_col )
+        RANDOM_no_counterparts = find_number_no_counterparts(masked_dat, band_dat, radii, ra_col=ra_col, dec_col=dec_col)
 
         ## take the ratio of real to random no counterparts
         no_counterpart_ratio = REAL_no_counterparts / RANDOM_no_counterparts
@@ -378,7 +380,9 @@ def find_Q0_fleuren( band, radio_dat, band_dat, radii, mask_image, ra_col='RA', 
 
     return( coeff[0], coeff_err[0] )
 
-def LR_and_reliability( band, band_dat, radio_dat, qm_nm, sigma_pos, mag_bins, r_max, q0, LR_threshold=0.8, ra_col='RA', dec_col='DEC', mag_col='', id_col='' ):
+def LR_and_reliability( band, band_dat, radio_dat, qm_nm, sigma_pos, mag_bins, r_max, q0, LR_threshold=0.8,
+                        ra_col='RA', dec_col='DEC', mag_col='', id_col='', rad_ra_col='RA', rad_dec_col='DEC',
+                        rad_id_col='Source_id'):
 
     ## housekeeping
     band_col = mag_col.replace('X', band)
@@ -396,7 +400,7 @@ def LR_and_reliability( band, band_dat, radio_dat, qm_nm, sigma_pos, mag_bins, r
     for xx in np.arange(radio_dat.shape[0]):
 
         ## calculate f(r)
-        distances = cenang( radio_dat['RA'][xx], radio_dat['DEC'][xx], band_dat[ra_col], band_dat[dec_col] ) * 60. * 60.
+        distances = cenang( radio_dat[rad_ra_col][xx], radio_dat[rad_dec_col][xx], band_dat[ra_col], band_dat[dec_col] ) * 60. * 60.
         candidate_idx = np.where( distances <= r_max )[0]
         n_cand = len( candidate_idx )
         if n_cand > 0:
@@ -418,7 +422,7 @@ def LR_and_reliability( band, band_dat, radio_dat, qm_nm, sigma_pos, mag_bins, r
             LR_reliability = LR / ( np.sum( LR ) + 1. - q0 )
 
             ## save information to lists            
-            radio_id = radio_id + np.repeat( radio_dat['Source_id'][xx], n_cand ).tolist()
+            radio_id = radio_id + np.repeat( radio_dat[rad_id_col][xx], n_cand ).tolist()
             band_id = band_id + tmp_dat[id_col].tolist()
             lr_value = lr_value + LR.tolist()
             lr_rel = lr_rel + LR_reliability.tolist()
@@ -444,10 +448,10 @@ def LR_and_reliability( band, band_dat, radio_dat, qm_nm, sigma_pos, mag_bins, r
 
     print( 'Found a total of %s candidates'%str(n_cand) )
     outfile = band + '_LR_matches.dat'
-#    outfile = band + '_LR_matches.xml' #updated to output VOTab for EMUcat - yg
+    #outfile = band + '_LR_matches.xml' #updated to output VOTab for EMUcat - yg
     print( 'Saving matches to %s'%outfile )
-    t.write( outfile, format='ascii' )
-#    t.write( outfile, format='votable' ) #updated to output VOTab for EMUcat - yg
+    t.write( outfile, format='csv', overwrite=True, fast_writer=True)
+    #t.write( outfile, format='votable', overwrite=True) #updated to output VOTab for EMUcat - yg
 
     return( outfile )
 
@@ -456,7 +460,7 @@ def main( multiwave_cat, radio_cat, mask_image, config_file='lr_config.txt', ove
 
     ## read the configuration file and parse
     print( 'Reading in configuration file.' )
-    config_params = pandas.read_table( config_file, delim_whitespace=True ).replace("'","",regex=True)
+    config_params = pandas.read_table(config_file, sep='\s+').replace("'","",regex=True)
     outdir = config_params['value'][np.where( config_params['parameter'] == 'outdir' )[0][0]]
     bands = config_params['value'][np.where( config_params['parameter'] == 'bands' )[0][0]]
     my_bands = bands.split(',')
@@ -469,6 +473,9 @@ def main( multiwave_cat, radio_cat, mask_image, config_file='lr_config.txt', ove
     mag_err_col = config_params['value'][np.where( config_params['parameter'] == 'mag_err_col' )[0][0]]
     flux_col = config_params['value'][np.where( config_params['parameter'] == 'flux_col' )[0][0]]
     flux_err_col = config_params['value'][np.where( config_params['parameter'] == 'flux_err_col' )[0][0]]
+    radio_ra_col = config_params['value'][np.where( config_params['parameter'] == 'radio_ra_col' )[0][0]]
+    radio_dec_col = config_params['value'][np.where( config_params['parameter'] == 'radio_dec_col' )[0][0]]
+    radio_id_col = config_params['value'][np.where(config_params['parameter'] == 'radio_id_col')[0][0]]
     beam_size = np.float(config_params['value'][np.where( config_params['parameter'] == 'beam_size' )[0][0]])
     cal_errors = np.float(config_params['value'][np.where( config_params['parameter'] == 'cal_errors' )[0][0]])
 
@@ -491,7 +498,7 @@ def main( multiwave_cat, radio_cat, mask_image, config_file='lr_config.txt', ove
     area_asec = get_unmasked_area( mask_image, overwrite=overwrite )
 
     ## mask the radio data
-    masked_radio_cat = apply_mask( radio_cat, mask_image, ra_col='RA', dec_col='DEC', overwrite=overwrite )
+    masked_radio_cat = apply_mask( radio_cat, mask_image, ra_col=radio_ra_col, dec_col=radio_dec_col, overwrite=overwrite )
 
     ## read in the masked radio data
     radio_hdul = fits.open( masked_radio_cat )
@@ -509,7 +516,7 @@ def main( multiwave_cat, radio_cat, mask_image, config_file='lr_config.txt', ove
     cmap = matplotlib.cm.get_cmap('magma')
     im = aplpy.FITSFigure( mask_image )
     im.show_markers( master_dat[ra_col], master_dat[dec_col], marker=',', facecolor='0.4', edgecolor='0.4' )
-    im.show_markers( radio_dat['RA'], radio_dat['DEC'], marker='*', facecolor=cmap(0.75), edgecolor=cmap(0.15), linewidth=0.3, s=70  )
+    im.show_markers( radio_dat[radio_ra_col], radio_dat[radio_dec_col], marker='*', facecolor=cmap(0.75), edgecolor=cmap(0.15), linewidth=0.3, s=70  )
     im.save('Sky_coverage.png')
     im.close()
     
@@ -539,13 +546,16 @@ def main( multiwave_cat, radio_cat, mask_image, config_file='lr_config.txt', ove
 
         ## find the matched magnitudes -- this takes a long time so it first checks if the file already exists
         mag_file = my_band + '_matched_mags_r' + str( round( r_max, ndigits=2 ) ) + '_SNR' + str( snr_cut ) + '.dat'
-        m_mags = make_match_magnitudes( my_band, band_dat, radio_dat, outfile=mag_file, ra_col=ra_col, dec_col=dec_col, mag=band_col, r_max=r_max, overwrite=overwrite )
+        m_mags = make_match_magnitudes( my_band, band_dat, radio_dat, outfile=mag_file, ra_col=ra_col, dec_col=dec_col,
+                                        rad_ra_col=radio_ra_col, rad_dec_col=radio_dec_col, mag=band_col, r_max=r_max,
+                                        rad_id_col=radio_id_col, overwrite=overwrite )
         match_magnitudes = np.array(m_mags['matched_mag'].tolist())
         match_radio_sources = np.array(m_mags['radio_id'].tolist())
 
         ## find q0 (Fleuren+ 2012 method)
         radii = np.arange( 1., beam_size, 0.2 )
-        Q0, Q0_err = find_Q0_fleuren( my_band, radio_dat, band_dat, radii, mask_image, ra_col=ra_col, dec_col=dec_col, overwrite=overwrite )      
+        Q0, Q0_err = find_Q0_fleuren( my_band, radio_dat, band_dat, radii, mask_image, ra_col=ra_col, dec_col=dec_col,
+                                      rad_ra_col=radio_ra_col, rad_dec_col=radio_dec_col, overwrite=overwrite )
         
         ## find the expected distribution of true counterparts -- q(m)
         tmhist = np.histogram( match_magnitudes, bins=mag_bins )
@@ -573,31 +583,33 @@ def main( multiwave_cat, radio_cat, mask_image, config_file='lr_config.txt', ove
 
         log_qm = [ np.log10( qq ) if not qq <= 0 else 0. for qq in qm ]
         log_qm = np.array( log_qm )
-	
 
         ## make some plots
         mag_bin_mids = mag_bins[1:] + 0.2
         fig, axs = plt.subplots( 3, sharex=True, gridspec_kw={'hspace': 0})
-	## plot 1
+        ## plot 1
         axs[0].step( mag_bin_mids, log_total, where='mid', label='Total', color='0.5', linewidth=2 )
         axs[0].step( mag_bin_mids, log_real, where='mid', label='Real', linewidth=2, linestyle='dashed', color='black' )
         axs[0].step( mag_bin_mids, log_bkg, where='mid', label='Background', linewidth=2, linestyle='dotted', color='0.4' )
-	## plot 2
+        ## plot 2
         axs[1].step( mag_bin_mids, log_qm_nm, where='mid' )
-	## plot 3
+        ## plot 3
         axs[2].step( mag_bin_mids, log_qm, where='mid' )
-	## axis labels
+        ## axis labels
         axs[0].set( ylabel='log(N(cparts))' )
         axs[1].set( ylabel='log(P(m))' )
         axs[2].set( xlabel=my_band+' magnitudes', ylabel='log(q(m))' )
-	## add legend
+        ## add legend
         axs[0].legend()
         ## adjust ylimits
         fig.savefig( my_band + '_magnitude_distributions.png' )
         fig.clear()
         
         ## Now calculate the LR and reliability
-        final_file = LR_and_reliability( my_band, band_dat, radio_dat, qm_nm, sigma_pos, mag_bins, r_max, Q0, LR_threshold=LR_threshold, ra_col=ra_col, dec_col=dec_col, mag_col=mag_col, id_col=id_col )
+        final_file = LR_and_reliability( my_band, band_dat, radio_dat, qm_nm, sigma_pos, mag_bins, r_max, Q0,
+                                         LR_threshold=LR_threshold, ra_col=ra_col, dec_col=dec_col, mag_col=mag_col,
+                                         id_col=id_col, rad_ra_col=radio_ra_col, rad_dec_col=radio_dec_col,
+                                         rad_id_col=radio_id_col)
 
         ## make another plot -- LR vs. separation
         final_matches = Table.read( final_file, format='ascii' )
