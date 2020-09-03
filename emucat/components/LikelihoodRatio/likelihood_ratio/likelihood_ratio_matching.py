@@ -33,7 +33,7 @@ def cenang( a1, d1, a2, d2 ):
         theta = theta * 180. / np.pi
         return theta
 
-def apply_mask( catalogue, mask_image, ra_col='RA', dec_col='DEC', overwrite=True ):
+def apply_mask( catalogue, mask_image, ra_col='RA', dec_col='DEC', overwrite=True):
 
     ## open the catalogue
     mycat = fits.open( catalogue )
@@ -72,22 +72,22 @@ def apply_mask( catalogue, mask_image, ra_col='RA', dec_col='DEC', overwrite=Tru
     new_header = mycat[1].header
     new_header['NAXIS2'] = len(unmasked_idx[0])
     new_table = fits.BinTableHDU( data=new_data, header=new_header )
-    new_name = catalogue.replace('.fits', '_masked.fits' )
+    new_name = catalogue.replace('.fits', '_masked.fits')
     new_table.writeto( new_name, overwrite=overwrite )
     
     return( new_name )
 
-def get_unmasked_area( mask_image, overwrite=True ):
+def get_unmasked_area( mask_image, outdir, overwrite=True ):
 
-    if os.path.isfile( 'unmasked_area.dat' ) and not overwrite:
+    if os.path.isfile(os.path.join(outdir, 'unmasked_area.dat')) and not overwrite:
         ## get the area from the file
-        with open( 'unmasked_area.dat', 'r' ) as f:
+        with open(os.path.join(outdir, 'unmasked_area.dat'), 'r') as f:
             lines = f.readlines()
         f.close()
         area_asec = np.float( lines[0] )
     else:
         ## open the mask image
-        mymask = fits.open( mask_image )
+        mymask = fits.open(mask_image)
         ## get the pixel scale
         xpix_asec = mymask[0].header['CDELT1'] * 60. * 60.
         ypix_asec = mymask[0].header['CDELT2'] * 60. * 60.
@@ -97,7 +97,7 @@ def get_unmasked_area( mask_image, overwrite=True ):
         ## find the unmasked area
         area_asec = pix_area_asec * npix_unmasked
         mymask.close()
-        with open( 'unmasked_area.dat', 'w' ) as f:
+        with open(os.path.join(outdir, 'unmasked_area.dat'), 'w') as f:
             f.write(str(area_asec))
         f.close()
 	    
@@ -108,9 +108,10 @@ def make_master_cat( multiwave_cat, overwrite=False, outdir='.', my_bands='J,H,K
                      dec_col='DEC', mask_col='Mask', sg_col='SGsep', mag_col='mag_X', mag_err_col='mag_err_X' ):
 
     ## check if output file exists
-    outtmp = multiwave_cat.split('/')[-1]
-    outcat = os.path.join( outdir, outtmp )
-    outcat = outcat.replace('.fits', '_master.fits' )
+    #outtmp = multiwave_cat.split('/')[-1]
+    #outcat = os.path.join( outdir, outtmp )
+    outcat = os.path.basename(multiwave_cat).replace('.fits', '_master.fits')
+    outcat = os.path.join(outdir, outcat)
 
     ## read in catalogue
     mw_hdul = fits.open( multiwave_cat )
@@ -264,11 +265,12 @@ def random_points_on_a_sphere( npoints, ra_limits, dec_limits ):
     return random_ra, random_dec
 
 
-def find_Q0_fleuren( band, radio_dat, band_dat, radii, mask_image, ra_col='RA', dec_col='DEC', rad_ra_col='RA', rad_dec_col='DEC', overwrite=True ):
+def find_Q0_fleuren( band, radio_dat, band_dat, radii, mask_image, outdir,
+                     ra_col='RA', dec_col='DEC', rad_ra_col='RA', rad_dec_col='DEC', overwrite=True ):
 
 
     ## first check if the number of no counterparts has already been found
-    f_file = band + '_Fleuren_no_counterparts.dat'
+    f_file = os.path.join(outdir, band + '_Fleuren_no_counterparts.dat')
 
     if os.path.isfile( f_file ) and not overwrite:
         print( 'Blanks already found for this band, reading file.' )
@@ -281,7 +283,7 @@ def find_Q0_fleuren( band, radio_dat, band_dat, radii, mask_image, ra_col='RA', 
 
         ## check if a random radio catalogue already exists
         n_srcs = radio_dat.shape[0]
-        f_rand_file = band + '_Fleuren_random_catalogue.fits'
+        f_rand_file = os.path.join(outdir, band + '_Fleuren_random_catalogue.fits')
         if os.path.isfile( f_rand_file ) and not overwrite:
             print( 'Random radio catalogue already exists, will use.' )
         else:
@@ -365,7 +367,7 @@ def find_Q0_fleuren( band, radio_dat, band_dat, radii, mask_image, ra_col='RA', 
     t2['parameter'] = np.array(['Q0','sig'])
     t2['value'] = coeff
     t2['1sig'] = coeff_err
-    t2.write( band+'_Q0_estimates.dat', format='ascii', overwrite=True )
+    t2.write( os.path.join(outdir, band+'_Q0_estimates.dat'), format='ascii', overwrite=True )
 
     ## and plot
     n_srcs = radio_dat.shape[0]
@@ -375,12 +377,12 @@ def find_Q0_fleuren( band, radio_dat, band_dat, radii, mask_image, ra_col='RA', 
     plt.plot( t1['Radius'], yvals, linewidth=2, color='red', label='Fit' )
     plt.plot( t1['Radius'], t1['Ratio'], marker='o', color='blue', label='Ratio' )
     plt.legend()
-    plt.savefig( band + '_q0_estimate.png' )
+    plt.savefig(os.path.join(outdir, band + '_q0_estimate.png'))
     plt.close()
 
     return( coeff[0], coeff_err[0] )
 
-def LR_and_reliability( band, band_dat, radio_dat, qm_nm, sigma_pos, mag_bins, r_max, q0, LR_threshold=0.8,
+def LR_and_reliability( band, band_dat, radio_dat, qm_nm, sigma_pos, mag_bins, r_max, q0, outdir, LR_threshold=0.8,
                         ra_col='RA', dec_col='DEC', mag_col='', id_col='', rad_ra_col='RA', rad_dec_col='DEC',
                         rad_id_col='Source_id'):
 
@@ -447,7 +449,7 @@ def LR_and_reliability( band, band_dat, radio_dat, qm_nm, sigma_pos, mag_bins, r
     t[band_name_sep] = separation
 
     print( 'Found a total of %s candidates'%str(n_cand) )
-    outfile = band + '_LR_matches.dat'
+    outfile = os.path.join(outdir, band + '_LR_matches.dat')
     #outfile = band + '_LR_matches.xml' #updated to output VOTab for EMUcat - yg
     print( 'Saving matches to %s'%outfile )
     t.write( outfile, format='csv', overwrite=True, fast_writer=True)
@@ -495,7 +497,7 @@ def main( multiwave_cat, radio_cat, mask_image, config_file='lr_config.txt', ove
     master_dat = master_hdul[1].data
 
     ## get the un-masked area
-    area_asec = get_unmasked_area( mask_image, overwrite=overwrite )
+    area_asec = get_unmasked_area( mask_image, outdir=outdir, overwrite=overwrite )
 
     ## mask the radio data
     masked_radio_cat = apply_mask( radio_cat, mask_image, ra_col=radio_ra_col, dec_col=radio_dec_col, overwrite=overwrite )
@@ -517,7 +519,7 @@ def main( multiwave_cat, radio_cat, mask_image, config_file='lr_config.txt', ove
     im = aplpy.FITSFigure( mask_image )
     im.show_markers( master_dat[ra_col], master_dat[dec_col], marker=',', facecolor='0.4', edgecolor='0.4' )
     im.show_markers( radio_dat[radio_ra_col], radio_dat[radio_dec_col], marker='*', facecolor=cmap(0.75), edgecolor=cmap(0.15), linewidth=0.3, s=70  )
-    im.save('Sky_coverage.png')
+    im.save(os.path.join(outdir, 'Sky_coverage.png'))
     im.close()
     
 
@@ -546,6 +548,7 @@ def main( multiwave_cat, radio_cat, mask_image, config_file='lr_config.txt', ove
 
         ## find the matched magnitudes -- this takes a long time so it first checks if the file already exists
         mag_file = my_band + '_matched_mags_r' + str( round( r_max, ndigits=2 ) ) + '_SNR' + str( snr_cut ) + '.dat'
+        mag_file = os.path.join(outdir, mag_file)
         m_mags = make_match_magnitudes( my_band, band_dat, radio_dat, outfile=mag_file, ra_col=ra_col, dec_col=dec_col,
                                         rad_ra_col=radio_ra_col, rad_dec_col=radio_dec_col, mag=band_col, r_max=r_max,
                                         rad_id_col=radio_id_col, overwrite=overwrite )
@@ -554,8 +557,9 @@ def main( multiwave_cat, radio_cat, mask_image, config_file='lr_config.txt', ove
 
         ## find q0 (Fleuren+ 2012 method)
         radii = np.arange( 1., beam_size, 0.2 )
-        Q0, Q0_err = find_Q0_fleuren( my_band, radio_dat, band_dat, radii, mask_image, ra_col=ra_col, dec_col=dec_col,
-                                      rad_ra_col=radio_ra_col, rad_dec_col=radio_dec_col, overwrite=overwrite )
+        Q0, Q0_err = find_Q0_fleuren( my_band, radio_dat, band_dat, radii, mask_image, outdir=outdir,
+                                      ra_col=ra_col, dec_col=dec_col, rad_ra_col=radio_ra_col,
+                                      rad_dec_col=radio_dec_col, overwrite=overwrite )
         
         ## find the expected distribution of true counterparts -- q(m)
         tmhist = np.histogram( match_magnitudes, bins=mag_bins )
@@ -602,14 +606,14 @@ def main( multiwave_cat, radio_cat, mask_image, config_file='lr_config.txt', ove
         ## add legend
         axs[0].legend()
         ## adjust ylimits
-        fig.savefig( my_band + '_magnitude_distributions.png' )
+        fig.savefig(os.path.join(outdir, my_band + '_magnitude_distributions.png'))
         fig.clear()
         
         ## Now calculate the LR and reliability
         final_file = LR_and_reliability( my_band, band_dat, radio_dat, qm_nm, sigma_pos, mag_bins, r_max, Q0,
-                                         LR_threshold=LR_threshold, ra_col=ra_col, dec_col=dec_col, mag_col=mag_col,
-                                         id_col=id_col, rad_ra_col=radio_ra_col, rad_dec_col=radio_dec_col,
-                                         rad_id_col=radio_id_col)
+                                         outdir=outdir, LR_threshold=LR_threshold, ra_col=ra_col, dec_col=dec_col,
+                                         mag_col=mag_col, id_col=id_col, rad_ra_col=radio_ra_col,
+                                         rad_dec_col=radio_dec_col, rad_id_col=radio_id_col)
 
         ## make another plot -- LR vs. separation
         final_matches = Table.read( final_file, format='ascii' )
@@ -634,7 +638,7 @@ def main( multiwave_cat, radio_cat, mask_image, config_file='lr_config.txt', ove
         ## axis labels
         axs[0].set( ylabel='Reliability' )
         axs[1].set( xlabel='separation [arcsec]', ylabel='LR value' )
-        fig.savefig( my_band + '_LR_values.png' )
+        fig.savefig(os.path.join(outdir, my_band + '_LR_values.png'))
         fig.clear()
 
 

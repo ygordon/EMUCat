@@ -5,10 +5,12 @@
 ###converts output back to VOTable for EMUcat
 
 
+import os
 import argparse, subprocess, os, numpy as np, pandas as pd
 from astropy.table import Table
 from astropy.io import fits
 from astropy.wcs import WCS
+from likelihood_ratio_matching import main
 
 ###########################################################################
 ###def functions
@@ -23,6 +25,7 @@ def fake_mask(catfile, catformat='votable', acol='ra', dcol='dec',
     
     ###obtain ref ra/dec for fake mask from catalogue data
     catdata = Table.read(catfile, format=catformat)
+
     ra, dec = np.array(catdata[acol]), np.array(catdata[dcol])
     
     ##dec easy, ra needs to account for ra wrapping at 360/0deg
@@ -63,7 +66,7 @@ def add_mask_and_stargal_cols(mwfile, fileformat='fits'):
     'set all to good for now, update later - stargal can exploit WISE colours'
     
     data = Table.read(mwfile, format=fileformat)
-    
+
     ###mask 0 = good
     ###sg 1 = good
     maskarray = np.zeros(len(data))
@@ -79,14 +82,19 @@ def add_mask_and_stargal_cols(mwfile, fileformat='fits'):
 
 def VOTable_to_fits(fname_in, fname_out, over_write=True):
     ###create fits copy of VOTable from EMUcat for use with LR code
-    data = Table.read(fname_in)
+    data = Table.read(fname_in, format='votable')
+    for c in data.columns.values():
+        if c.dtype == 'object':
+            as_str = data[c.name].astype('str')
+            data.replace_column(c.name, as_str)
+
     data.write(fname_out, format='fits', overwrite=over_write)
     return
 
 
-def output_to_VOTable(fname_in, fname_out, over_write=True):
+def output_to_VOTable(fname_in, fname_out, overwrite=True):
     data = Table.read(fname_in, format='ascii')
-    data.write(fname_out, format='votable')
+    data.write(fname_out, format='votable', overwrite=overwrite)
     return
 
 
@@ -96,53 +104,52 @@ def run_lr(fakefile='fakemask.fits', racol='ra', deccol='dec'):
     
     ##parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('mwcat', type=str,
+    parser.add_argument('--mwcat', type=str, action='store',
                         help='multiwavelength data VOTable to convert to fits for LR code')
-    parser.add_argument('radcat', type=str,
+    parser.add_argument('--radcat', type=str, action='store',
                         help='radio data VOTable to convert to fits for LR code')
+    parser.add_argument('--config', type=str, action='store', default='./lr_config.txt',
+                        help='configuration file.')
     args = parser.parse_args()
     
     ###extract info from config file - need outdir
-    config_info = pd.read_table('lr_config.txt',
-                                delim_whitespace=True).replace("'", "", regex=True)
+    config_info = pd.read_table(args.config, sep='\s+').replace("'", "", regex=True)
     outdir = config_info[(config_info['parameter']=='outdir')].iloc[0]['value']
-                        
-    ##list current directory contents - helps cleaning up
-    keep_files = os.listdir()
-    
+
+    try:
+        os.makedirs(outdir)
+    except:
+        pass
+
     ###create fits tables for mw/radcat
     table_data = [args.mwcat, args.radcat]
-    fitsnames = [fname.split('.')[0]+'.fits' for fname in table_data]
+    fitsnames = [os.path.splitext(fname)[0]+'.fits' for fname in table_data]
+
     for i in range(len(table_data)):
         VOTable_to_fits(fname_in=table_data[i], fname_out=fitsnames[i])
     
     ###add in mask and stargal columns
     add_mask_and_stargal_cols(mwfile=fitsnames[0])
-    
+
+    fake_file = os.path.join(outdir, fakefile)
+
     ###need to place here what to do about mask image, currently assumes present
-    fake_mask(catfile=args.mwcat, acol=racol, dcol=deccol, outfile=fakefile)
-    mask = fakefile
+    fake_mask(catfile=args.mwcat, acol=racol, dcol=deccol, outfile=fake_file)
+    mask = fake_file
 
     ###run LR code
-    command_args = ['python3', 'likelihood_ratio_matching.py', fitsnames[0],
-                    fitsnames[1], mask]
-    lr = subprocess.Popen(command_args, stdout=subprocess.PIPE, universal_newlines=True)
-    lr.wait() ##ensures LR process finishes before code continues
+    main(multiwave_cat=fitsnames[0], radio_cat=fitsnames[1], mask_image=mask, config_file=args.config, overwrite=True,
+         snr_cut=5, LR_threshold=0.8)
 
     ###convert outputs (keep those that end in '_LR_matches.dat') to VOTable
-    if outdir!='':
-        file_list = os.listdir(outdir)
-        outdir = outdir+'/'
-    else:
-        file_list = os.listdir()
-    for filename in file_list:
+
+    for filename in os.listdir(outdir):
         if '_LR_matches.dat' in filename:
-            newname = outdir+filename.split('.')[0] + '.xml'
-            output_to_VOTable(fname_in=outdir+filename, fname_out=newname)
-            keep_files.append(newname)
+            newname = os.path.join(outdir, filename.split('.')[0] + '.xml')
+            output_to_VOTable(fname_in=os.path.join(outdir, filename), fname_out=newname, overwrite=True)
 
     ##tidy up - get rid of surplus (add in moving files to target directory)
-    for filename in file_list:
+    '''for filename in file_list:
         if filename not in keep_files:
             os.remove(outdir+filename)
 
@@ -151,14 +158,14 @@ def run_lr(fakefile='fakemask.fits', racol='ra', deccol='dec'):
         working_directory_list = os.listdir()
         for filename in working_directory_list:
             if filename not in keep_files:
-                os.remove(filename)
+                os.remove(filename)'''
 
     return
 
 ###########################################################################
 
-
-run_lr()
+if __name__ == "__main__":
+    run_lr()
 
 ###to do:
 ##1) upgrade to grab and mosaic WISE images
