@@ -10,18 +10,19 @@ import argparse, subprocess, os, numpy as np, pandas as pd
 from astropy.table import Table
 from astropy.io import fits
 from astropy.wcs import WCS
+from astropy.coordinates import SkyCoord
 from likelihood_ratio_matching import main
 
 ###########################################################################
 ###def functions
 
 def fake_mask(catfile, catformat='votable', acol='ra', dcol='dec',
-              outfile='fakemask.fits', npx=4095, overwrite=True):
+              outfile='fakemask.fits', overwrite=True):
     
     'fake a mask image (all unmasked) to enable LR code to run using just catalogue info'
     'use AllWISE image parameters, set array values to 1'
     'in lieu of dowloading AllWISE images and mask on the fly'
-    'this will let code run but needs science verification - is the output still good?'
+    'make npx dependent on ra/dec range covered, will work but slow for large regions'
     
     ###obtain ref ra/dec for fake mask from catalogue data
     catdata = Table.read(catfile, format=catformat)
@@ -29,15 +30,31 @@ def fake_mask(catfile, catformat='votable', acol='ra', dcol='dec',
     ra, dec = np.array(catdata[acol]), np.array(catdata[dcol])
     
     ##dec easy, ra needs to account for ra wrapping at 360/0deg
-    acen = np.min(ra) + ((np.max(ra)-np.min(ra))/2)
-    dcen = np.min(dec) + ((np.max(dec)-np.min(dec))/2)
+    amin, amax = np.min(ra), np.max(ra)
+    dmin, dmax = np.min(dec), np.max(dec)
+    
+    acen = amin + ((amax-amin)/2)
+    dcen = dmin + ((dmax-dmin)/2)
+    
     ###account for ra wrapping at 360 - n.b. will break if cone search radius is >90deg!!!
-    if np.max(ra) - np.min(ra) > 180:
-        acen = (360-np.max(ra)) + ((np.min(ra)-(360-np.max(ra)))/2)
+    if amax - amin > 180:
+        acen = (360-amax) + ((amin-(360-amax))/2)
     
-    
+    ####define number of pixels by wcs world to pix
+    ###use lines defining centre of image to determine size (i.e amin and amax versus dcen)
+    a0d = SkyCoord(ra=amax, dec=dcen, unit='deg')
+    a1d = SkyCoord(ra=amin, dec=dcen, unit='deg')
+    d0a = SkyCoord(ra=acen, dec=dmin, unit='deg')
+    d1a = SkyCoord(ra=acen, dec=dmax, unit='deg')
+
+    dRA, dDec = a0d.separation(a1d), d0a.separation(d1a)
+
+    ###set npx
+    npxa = int((dRA/0.0003819444391411).value)
+    npxd = int((dDec/0.0003819444391411).value)
+
     ###create data array (4095x4095)
-    unmasked_array = np.zeros((npx, npx))
+    unmasked_array = np.zeros((npxd, npxa))
     
     ##create fits primary HDU
     hdu = fits.PrimaryHDU(unmasked_array)
@@ -47,8 +64,8 @@ def fake_mask(catfile, catformat='votable', acol='ra', dcol='dec',
     hdu.header['CTYPE2'] = 'DEC--SIN'
     hdu.header['CRVAL1'] = acen
     hdu.header['CRVAL2'] = dcen
-    hdu.header['CRPIX1'] = npx/2
-    hdu.header['CRPIX2'] = npx/2
+    hdu.header['CRPIX1'] = npxa/2
+    hdu.header['CRPIX2'] = npxd/2
     hdu.header['CDELT1'] = -0.0003819444391411
     hdu.header['CDELT2'] = 0.0003819444391411
     hdu.header['CUNIT1'] = 'deg'
